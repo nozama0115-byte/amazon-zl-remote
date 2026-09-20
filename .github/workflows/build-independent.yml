@@ -1,0 +1,67 @@
+name: Build Independent Amazon ZL Remote
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'independent/**'
+      - '.github/workflows/build-independent.yml'
+
+jobs:
+  windows-client:
+    name: Independent Windows client
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Windows client
+        shell: pwsh
+        run: |
+          msbuild independent\client\AmazonZLRemote.csproj /m /p:Configuration=Release /p:Platform="AnyCPU"
+          New-Item -ItemType Directory -Force -Path output\client | Out-Null
+          Copy-Item independent\client\bin\Release\Amazon-ZL-Remote-Independent.exe output\client\
+          Copy-Item independent\client\bin\Release\Amazon-ZL-Remote-Independent.exe.config output\client\ -ErrorAction SilentlyContinue
+
+      - name: Upload Windows client
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amazon-ZL-Remote-Independent-Windows
+          path: output/client/
+          retention-days: 14
+
+  relay-server:
+    name: Independent relay server
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build Linux relay
+        run: |
+          dotnet publish independent/server/AmazonZLRelayServer.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -o output/server-linux
+
+      - name: Build Windows relay
+        run: |
+          dotnet publish independent/server/AmazonZLRelayServer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -o output/server-windows
+
+      - name: Upload Linux relay
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amazon-ZL-Relay-Server-Linux-x64
+          path: output/server-linux/
+          retention-days: 14
+
+      - name: Upload Windows relay
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amazon-ZL-Relay-Server-Windows-x64
+          path: output/server-windows/
+          retention-days: 14
