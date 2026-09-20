@@ -190,6 +190,9 @@ jobs:
         run: |
           "$VCPKG_ROOT/vcpkg" install --triplet "$VCPKG_TRIPLET" --x-install-root="$VCPKG_ROOT/installed"
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
       - name: Build helper DLL
         shell: pwsh
         working-directory: rustdesk
