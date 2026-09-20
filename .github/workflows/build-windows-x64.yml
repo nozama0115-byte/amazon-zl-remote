@@ -113,8 +113,14 @@ jobs:
       - name: Verify and apply Amazon ZL patch
         shell: pwsh
         run: |
-          git -C rustdesk apply --check ..\customization\patches\amazon-zl-remote.patch
-          git -C rustdesk apply ..\customization\patches\amazon-zl-remote.patch
+          git -C rustdesk apply --check --exclude=flutter/assets/icon.svg ..\customization\patches\amazon-zl-remote.patch
+          git -C rustdesk apply --exclude=flutter/assets/icon.svg ..\customization\patches\amazon-zl-remote.patch
+
+      - name: Restore Amazon ZL SVG icon
+        shell: pwsh
+        run: |
+          $b64 = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmFja2dyb3VuZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxNDVBMzgiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMUY3QTREIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjEwNCIgZmlsbD0idXJsKCNiYWNrZ3JvdW5kKSIvPgogIDxyZWN0IHg9Ijc4IiB5PSIxMDQiIHdpZHRoPSIzNTYiIGhlaWdodD0iMjM4IiByeD0iMjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIzMCIvPgogIDxwYXRoIGQ9Ik0xNzYgNDA4aDE2ME0yNTYgMzQ0djY0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMzAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik0xNjAgMjI0aDE5MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRjU5RTBCIiBzdHJva2Utd2lkdGg9IjM0IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJtMzA1IDE3NiA0OCA0OC00OCA0OE0yMDcgMTc2bC00OCA0OCA0OCA0OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRjU5RTBCIiBzdHJva2Utd2lkdGg9IjI4IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg=='
+          [IO.File]::WriteAllBytes((Join-Path $PWD 'rustdesk\flutter\assets\icon.svg'), [Convert]::FromBase64String($b64))
 
       - name: Generate Amazon ZL visual assets
         shell: pwsh
