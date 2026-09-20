@@ -1,0 +1,159 @@
+diff --git a/AMAZON_ZL_REMOTE.md b/AMAZON_ZL_REMOTE.md
+new file mode 100644
+index 0000000..39ea693
+--- /dev/null
++++ b/AMAZON_ZL_REMOTE.md
+@@ -0,0 +1,32 @@
++# Amazon ZL Remote
++
++Aplicación de acceso remoto para Windows, con un flujo familiar: el usuario ve el código de su equipo, introduce el código del equipo remoto y autoriza la conexión.
++
++## Primera versión
++
++- Windows a Windows por Internet.
++- Control de pantalla, teclado y mouse.
++- Acceso interactivo con aceptación del usuario.
++- Acceso permanente protegido por contraseña.
++- Transferencia de archivos y portapapeles.
++- Historial y libreta de equipos.
++- Interfaz en español.
++- Identidad visual Amazon ZL Remote.
++
++## Compilación gratuita
++
++En GitHub, abra **Actions**, seleccione **Build Amazon ZL Remote** y pulse **Run workflow**. Al terminar, descargue el artefacto `rustdesk-unsigned-windows-x86_64` o el ejecutable x86_64 generado en la versión `amazon-zl-remote-v1.0`.
++
++El archivo se genera sin firma comercial. Windows puede mostrar una advertencia de editor desconocido; esto no equivale a una detección de virus. Una firma de código comercial es opcional y normalmente tiene costo.
++
++## Servidor propio opcional
++
++La aplicación puede comenzar usando la infraestructura pública de RustDesk. Para que las conexiones dependan solamente de infraestructura controlada por la empresa, use `server/install-server.ps1` en una computadora Windows que permanezca encendida. Después configure en cada cliente la dirección del servidor y la clave pública mostrada por el instalador.
++
++El router debe reenviar TCP `21115-21119` y UDP `21116` hacia esa computadora. Antes de hacerlo, confirme que la conexión de Internet tiene una dirección IP pública o un dominio alcanzable desde fuera de la oficina.
++
++## Licencia y seguridad
++
++Este proyecto deriva de RustDesk y conserva la licencia AGPL-3.0 y los avisos originales. El acceso debe realizarse solamente a equipos propios o con autorización expresa. No se ocultan las sesiones ni se elimina el aviso visible de conexión.
++
++El logotipo incluido es provisional y puede sustituirse por el logotipo oficial antes de una versión definitiva.
+diff --git a/flutter/assets/icon.svg b/flutter/assets/icon.svg
+index 4d43f8b..b15d67d 100644
+--- a/flutter/assets/icon.svg
++++ b/flutter/assets/icon.svg
+@@ -1 +1,13 @@
+-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" viewBox="66.993 897.484 26 26"><linearGradient id="a" x1=".148" x2=".845" y1=".851" y2=".154" gradientTransform="matrix(26.301 0 0 26.331 90.674 911.757)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0071ff"/><stop offset="1" stop-color="#00bfe1"/></linearGradient><defs><linearGradient xlink:href="#a" id="b" x1=".148" x2=".845" y1=".851" y2=".154" gradientTransform="matrix(26.00048 0 0 25.99935 66.993 897.485)" gradientUnits="userSpaceOnUse"/></defs><path fill="url(#b)" d="m89.318 903.552-2.135 2.122c-.376.337-.558.879-.347 1.337 1.422 2.976.882 6.524-1.452 8.856-2.335 2.331-5.887 2.87-8.866 1.449-.439-.197-.954-.03-1.292.312l-2.17 2.167a1.154 1.154 0 0 0 .208 1.81 13.005 13.005 0 0 0 15.91-1.912 12.97 12.97 0 0 0 1.956-15.887 1.154 1.154 0 0 0-1.812-.254zm-18.467-2.305a12.969 12.969 0 0 0-2.02 15.885 1.154 1.154 0 0 0 1.812.254l2.124-2.11c.385-.336.572-.884.359-1.348-1.423-2.976-.884-6.524 1.451-8.856 2.334-2.332 5.887-2.871 8.866-1.45.434.194.942.033 1.281-.3l2.182-2.18a1.152 1.152 0 0 0-.208-1.81 13.009 13.009 0 0 0-15.893 1.973z"/></svg>
+\ No newline at end of file
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <defs>
++    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
++      <stop offset="0" stop-color="#145A38"/>
++      <stop offset="1" stop-color="#1F7A4D"/>
++    </linearGradient>
++  </defs>
++  <rect width="512" height="512" rx="104" fill="url(#background)"/>
++  <rect x="78" y="104" width="356" height="238" rx="28" fill="none" stroke="#FFFFFF" stroke-width="30"/>
++  <path d="M176 408h160M256 344v64" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
++  <path d="M160 224h192" fill="none" stroke="#F59E0B" stroke-width="34" stroke-linecap="round"/>
++  <path d="m305 176 48 48-48 48M207 176l-48 48 48 48" fill="none" stroke="#F59E0B" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
++</svg>
+diff --git a/flutter/lib/common.dart b/flutter/lib/common.dart
+index b80e0b5..e3a926a 100644
+--- a/flutter/lib/common.dart
++++ b/flutter/lib/common.dart
+@@ -249,7 +249,7 @@ class MyTheme {
+   MyTheme._();
+ 
+   static const Color grayBg = Color(0xFFEFEFF2);
+-  static const Color accent = Color(0xFF0071FF);
++  static const Color accent = Color(0xFF1F7A4D);
+   static const Color accent50 = Color(0x770071FF);
+   static const Color accent80 = Color(0xAA0071FF);
+   static const Color canvasColor = Color(0xFF212121);
+diff --git a/flutter/lib/desktop/pages/desktop_home_page.dart b/flutter/lib/desktop/pages/desktop_home_page.dart
+index 6d370cb..766060b 100644
+--- a/flutter/lib/desktop/pages/desktop_home_page.dart
++++ b/flutter/lib/desktop/pages/desktop_home_page.dart
+@@ -32,7 +32,7 @@ class DesktopHomePage extends StatefulWidget {
+   State<DesktopHomePage> createState() => _DesktopHomePageState();
+ }
+ 
+-const borderColor = Color(0xFF2F65BA);
++const borderColor = Color(0xFF1F7A4D);
+ 
+ class _DesktopHomePageState extends State<DesktopHomePage>
+     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+diff --git a/flutter/windows/runner/Runner.rc b/flutter/windows/runner/Runner.rc
+index 88d1854..44fd7f7 100644
+--- a/flutter/windows/runner/Runner.rc
++++ b/flutter/windows/runner/Runner.rc
+@@ -89,13 +89,13 @@ BEGIN
+     BEGIN
+         BLOCK "040904e4"
+         BEGIN
+-            VALUE "CompanyName", "Purslane Tech Pte. Ltd." "\0"
+-            VALUE "FileDescription", "RustDesk Remote Desktop" "\0"
++            VALUE "CompanyName", "Amazon Zona Libre S.A." "\0"
++            VALUE "FileDescription", "Amazon ZL Remote - Acceso remoto" "\0"
+             VALUE "FileVersion", VERSION_AS_STRING "\0"
+-            VALUE "InternalName", "rustdesk" "\0"
+-            VALUE "LegalCopyright", "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved." "\0"
+-            VALUE "OriginalFilename", "rustdesk.exe" "\0"
+-            VALUE "ProductName", "RustDesk" "\0"
++            VALUE "InternalName", "amazon-zl-remote" "\0"
++            VALUE "LegalCopyright", "Copyright © 2026 Amazon Zona Libre S.A. Basado en RustDesk (AGPL-3.0)." "\0"
++            VALUE "OriginalFilename", "amazon-zl-remote.exe" "\0"
++            VALUE "ProductName", "Amazon ZL Remote" "\0"
+             VALUE "ProductVersion", VERSION_AS_STRING "\0"
+         END
+     END
+diff --git a/src/common.rs b/src/common.rs
+index bf8964a..7d966d3 100644
+--- a/src/common.rs
++++ b/src/common.rs
+@@ -2258,6 +2258,13 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
+ }
+ 
+ pub fn load_custom_client() {
++    match config::APP_NAME.write() {
++        Ok(mut app_name) => *app_name = "Amazon-ZL-Remote".to_owned(),
++        Err(poisoned) => {
++            log::error!("Application name lock was poisoned; recovering branding state");
++            *poisoned.into_inner() = "Amazon-ZL-Remote".to_owned();
++        }
++    }
+     #[cfg(debug_assertions)]
+     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
+         read_custom_client(data.trim());
+diff --git a/src/lang/es.rs b/src/lang/es.rs
+index 5b3a0ab..bb40572 100644
+--- a/src/lang/es.rs
++++ b/src/lang/es.rs
+@@ -2,8 +2,8 @@ lazy_static::lazy_static! {
+ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+     [
+         ("Status", "Estado"),
+-        ("Your Desktop", "Tu escritorio"),
+-        ("desk_tip", "Puedes acceder a tu escritorio con esta ID y contraseña."),
++        ("Your Desktop", "Este equipo"),
++        ("desk_tip", "Comparta este código y la contraseña solo con personas autorizadas."),
+         ("Password", "Contraseña"),
+         ("Ready", "Listo"),
+         ("Established", "Establecido"),
+@@ -13,7 +13,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("Service is running", "El servicio se está ejecutando"),
+         ("Service is not running", "El servicio no se está ejecutando"),
+         ("not_ready_status", "No está listo. Comprueba tu conexión"),
+-        ("Control Remote Desktop", "Controlar escritorio remoto"),
++        ("Control Remote Desktop", "Conectar a otro equipo"),
+         ("Transfer file", "Transferir archivo"),
+         ("Connect", "Conectar"),
+         ("Recent sessions", "Sesiones recientes"),
+@@ -183,7 +183,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("Relayed and encrypted connection", "Conexión retransmitida y cifrada"),
+         ("Direct and unencrypted connection", "Conexión directa y sin cifrar"),
+         ("Relayed and unencrypted connection", "Conexión retransmitida y sin cifrar"),
+-        ("Enter Remote ID", "Introduzca el ID remoto"),
++        ("Enter Remote ID", "Escriba el código del otro equipo"),
+         ("Enter your password", "Introduzca su contraseña"),
+         ("Logging in...", "Iniciando sesión..."),
+         ("Enable RDP session sharing", "Habilitar el uso compartido de sesiones RDP"),
