@@ -1,0 +1,8 @@
+Amazon ZL Remote reproducible source base
+
+Upstream repository: https://github.com/rustdesk/rustdesk
+Exact upstream commit: 97811acbddf9d1e12c640bff99ea0c731b031291
+Customization: patches/amazon-zl-remote.patch
+Target: Windows x64
+
+The build workflow checks out the exact upstream commit, applies the customization patch, generates branded image assets, and produces a portable executable.
