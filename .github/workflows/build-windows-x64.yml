@@ -1,0 +1,233 @@
+name: Build Amazon ZL Remote Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  RUSTDESK_COMMIT: 97811acbddf9d1e12c640bff99ea0c731b031291
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  BRIDGE_FLUTTER_VERSION: "3.22.3"
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
+  CARGO_EXPAND_VERSION: "1.0.95"
+  LLVM_VERSION: "15.0.6"
+  VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+  VCPKG_TRIPLET: x64-windows-static
+
+jobs:
+  bridge:
+    name: Generate Flutter/Rust bridge
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Amazon ZL customization
+        uses: actions/checkout@v4
+        with:
+          path: customization
+
+      - name: Checkout exact RustDesk base
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          ref: ${{ env.RUSTDESK_COMMIT }}
+          submodules: recursive
+          path: rustdesk
+
+      - name: Verify and apply Amazon ZL patch
+        shell: bash
+        run: |
+          git -C rustdesk apply --check ../customization/patches/amazon-zl-remote.patch
+          git -C rustdesk apply ../customization/patches/amazon-zl-remote.patch
+
+      - name: Install Linux prerequisites
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ca-certificates clang cmake curl gcc g++ libclang-dev libgtk-3-dev llvm-dev nasm ninja-build pkg-config wget
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: x86_64-unknown-linux-gnu
+          components: rustfmt
+
+      - name: Install Flutter for bridge generation
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.BRIDGE_FLUTTER_VERSION }}
+          cache: true
+
+      - name: Generate bridge files
+        working-directory: rustdesk
+        shell: bash
+        run: |
+          cargo install cargo-expand --version "$CARGO_EXPAND_VERSION" --locked
+          cargo install flutter_rust_bridge_codegen --version "$FLUTTER_RUST_BRIDGE_VERSION" --features uuid --locked
+          sed -i -e 's/extended_text: 14.0.0/extended_text: 13.0.0/g' flutter/pubspec.yaml
+          pushd flutter
+          flutter pub get
+          popd
+          flutter_rust_bridge_codegen \
+            --rust-input ./src/flutter_ffi.rs \
+            --dart-output ./flutter/lib/generated_bridge.dart \
+            --c-output ./flutter/macos/Runner/bridge_generated.h
+          cp ./flutter/macos/Runner/bridge_generated.h ./flutter/ios/Runner/bridge_generated.h
+
+      - name: Upload bridge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-artifact
+          path: |
+            rustdesk/src/bridge_generated.rs
+            rustdesk/src/bridge_generated.io.rs
+            rustdesk/flutter/lib/generated_bridge.dart
+            rustdesk/flutter/lib/generated_bridge.freezed.dart
+            rustdesk/flutter/macos/Runner/bridge_generated.h
+            rustdesk/flutter/ios/Runner/bridge_generated.h
+          if-no-files-found: error
+          retention-days: 3
+
+  build:
+    name: Windows x64 portable EXE
+    needs: bridge
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Amazon ZL customization
+        uses: actions/checkout@v4
+        with:
+          path: customization
+
+      - name: Checkout exact RustDesk base
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          ref: ${{ env.RUSTDESK_COMMIT }}
+          submodules: recursive
+          path: rustdesk
+
+      - name: Verify and apply Amazon ZL patch
+        shell: pwsh
+        run: |
+          git -C rustdesk apply --check ..\customization\patches\amazon-zl-remote.patch
+          git -C rustdesk apply ..\customization\patches\amazon-zl-remote.patch
+
+      - name: Generate Amazon ZL visual assets
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+          python customization\scripts\generate_brand_assets.py rustdesk
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-artifact
+          path: rustdesk
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: ${{ env.LLVM_VERSION }}
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
+          cache: true
+
+      - name: Replace Flutter engine with RustDesk custom engine
+        shell: pwsh
+        run: |
+          flutter doctor -v
+          flutter precache --windows
+          Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
+          Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
+          $flutterRoot = (Split-Path (Split-Path (Get-Command flutter).Source -Parent) -Parent)
+          $engineDir = Join-Path $flutterRoot 'bin\cache\artifacts\engine\windows-x64-release'
+          New-Item -ItemType Directory -Force -Path $engineDir | Out-Null
+          Copy-Item -Force -Recurse windows-x64-release\* $engineDir
+
+      - name: Patch Flutter 3.24.5
+        shell: bash
+        working-directory: rustdesk
+        run: |
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff "$(dirname $(dirname $(which flutter)))"
+          cd "$(dirname $(dirname $(which flutter)))"
+          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        working-directory: rustdesk
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: ${{ env.VCPKG_TRIPLET }}
+          VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
+        run: |
+          "$VCPKG_ROOT/vcpkg" install --triplet "$VCPKG_TRIPLET" --x-install-root="$VCPKG_ROOT/installed"
+
+      - name: Build helper DLL
+        shell: pwsh
+        working-directory: rustdesk
+        run: |
+          git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
+          Set-Location RustDeskTempTopMostWindow
+          git checkout ecd8d6a139eee76845ea66423fb739af450fda90
+          & msbuild WindowInjection/WindowInjection.vcxproj -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
+          Set-Location ..
+
+      - name: Build Amazon ZL Remote
+        shell: pwsh
+        working-directory: rustdesk
+        run: |
+          python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+          if (Test-Path .\rustdesk-dist) { Remove-Item .\rustdesk-dist -Recurse -Force }
+          Move-Item .\flutter\build\windows\x64\runner\Release .\rustdesk-dist
+
+          Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
+          Expand-Archive usbmmidd_v2.zip -DestinationPath .
+          Remove-Item -Path .\usbmmidd_v2\Win32 -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path .\usbmmidd_v2\deviceinstaller64.exe,.\usbmmidd_v2\deviceinstaller.exe,.\usbmmidd_v2\usbmmidd.bat -Force -ErrorAction SilentlyContinue
+          Move-Item -Force .\usbmmidd_v2 .\rustdesk-dist\usbmmidd_v2
+
+          $helper = '.\RustDeskTempTopMostWindow\WindowInjection\x64\Release\WindowInjection.dll'
+          if (Test-Path $helper) { Copy-Item -Force $helper .\rustdesk-dist\WindowInjection.dll }
+
+      - name: Build self-extracted portable EXE
+        shell: bash
+        working-directory: rustdesk
+        run: |
+          sed -i '/dpiAware/d' res/manifest.xml
+          pushd libs/portable
+          python -m pip install -r requirements.txt
+          python ./generate.py -f ../../rustdesk-dist/ -o . -e ../../rustdesk-dist/rustdesk.exe
+          popd
+          mkdir -p output
+          cp target/release/rustdesk-portable-packer.exe output/Amazon-ZL-Remote-Windows-x64.exe
+          sha256sum output/Amazon-ZL-Remote-Windows-x64.exe > output/SHA256.txt
+
+      - name: Upload Amazon ZL Remote
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amazon-ZL-Remote-Windows-x64
+          path: rustdesk/output/*
+          if-no-files-found: error
+          retention-days: 14
